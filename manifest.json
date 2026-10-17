@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "Správy bez negatív",
+  "version": "1.1.0",
+  "description": "Skryje na spravodajskom webe správy, ktoré sú negatívne alebo psychicky zaťažujúce. Hodnotenie robí AI.",
+  "permissions": ["storage"],
+  "host_permissions": ["https://dennikn.sk/*", "https://www.dennikn.sk/*", "https://e.dennikn.sk/*", "https://nonegative.replit.app/*"],
+  "action": { "default_popup": "stats.html", "default_title": "Správy bez negatív – štatistiky" },
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [
+    {
+      "matches": ["https://dennikn.sk/*", "https://www.dennikn.sk/*", "https://e.dennikn.sk/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "options_page": "options.html"
+}
