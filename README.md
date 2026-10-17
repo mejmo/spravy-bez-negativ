@@ -2,6 +2,21 @@
 
 Chrome rozšírenie (Manifest V3), ktoré na spravodajskom webe skrýva negatívne a psychicky zaťažujúce správy.
 
+## Ukážky
+
+**Výsledok:** negatívne správy sú skryté, ostáva len to, čo čitateľa nezaťažuje.
+
+![Titulka po filtrovaní](docs/screenshots/vysledok.png)
+
+**Porovnanie:** tlačidlo „Zobraziť skryté správy“ ukáže pôvodný web a farebne označí hodnotenie
+(červená negatívne, žltá neutrálne, zelená pozitívne).
+
+![Pôvodný web s označením hodnotenia](docs/screenshots/porovnanie.png)
+
+**Štatistiky:** popup po kliku na ikonu rozšírenia.
+
+![Štatistiky 1](docs/screenshots/statistiky-1.png) ![Štatistiky 2](docs/screenshots/statistiky-2.png)
+
 ## Podporované weby
 - dennikn.sk (vrátane poddomén `www.dennikn.sk` a `e.dennikn.sk`)
 
