@@ -2,7 +2,9 @@
 
 <h1 align="center">Správy bez negatív</h1>
 
-<p align="center">Chrome rozšírenie, ktoré na spravodajskom webe skryje negatívne a psychicky zaťažujúce správy.</p>
+<p align="center">Rozšírenie pre Chrome, Edge a Firefox, ktoré na spravodajskom webe skryje negatívne a psychicky zaťažujúce správy.</p>
+
+<p align="center"><a href="https://mejmo.github.io/spravy-bez-negativ/"><strong>Webová stránka</strong></a></p>
 
 <p align="center"><img src="docs/screenshots/vysledok.jpg" alt="Titulka po filtrovaní" width="760"></p>
 
