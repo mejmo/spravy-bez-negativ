@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="sk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Správy bez negatív – rozšírenie pre Chrome, Edge a Firefox</title>
+<meta name="description" content="Rozšírenie prehliadača, ktoré na spravodajskom webe skryje negatívne a psychicky zaťažujúce správy. Hodnotí AI, môžeš si kedykoľvek ukázať pôvodný web.">
+<meta property="og:title" content="Správy bez negatív">
+<meta property="og:description" content="Rozšírenie, ktoré skryje negatívne správy a nechá ti len to, čo ťa nezaťaží.">
+<meta property="og:image" content="screenshots/vysledok.jpg">
+<link rel="icon" type="image/png" href="favicon.png">
+<style>
+  :root {
+    --bg: #f7faf8; --card: #ffffff; --fg: #14201a; --mut: #52615a; --line: #dfe8e3;
+    --acc: #059669; --acc-d: #047857; --acc-soft: #e6f7ef; --bad: #dc2626; --warn: #ca8a04;
+    --radius: 14px; --shadow: 0 1px 2px rgba(16,40,28,.06), 0 8px 24px rgba(16,40,28,.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0f1613; --card: #17211c; --fg: #eaf2ee; --mut: #9db0a6; --line: #26342d;
+            --acc: #34d399; --acc-d: #6ee7b7; --acc-soft: #12281f; --shadow: none; }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--bg); color: var(--fg);
+         font: 17px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  a { color: var(--acc-d); }
+  img { max-width: 100%; height: auto; display: block; }
+  .wrap { width: 100%; max-width: 1040px; margin: 0 auto; padding: 0 20px; }
+  section { padding: 56px 0; }
+  h1, h2, h3 { line-height: 1.2; margin: 0 0 .5em; }
+  h2 { font-size: clamp(1.5rem, 3.5vw, 2rem); }
+  .lead { font-size: 1.15rem; color: var(--mut); max-width: 640px; }
+
+  header.top { padding: 14px 0; }
+  header.top .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; text-decoration: none; color: var(--fg); }
+  .brand img { width: 32px; height: 32px; }
+  nav a { margin-left: 18px; color: var(--mut); text-decoration: none; font-size: .95rem; }
+  nav a:hover { color: var(--fg); }
+  .brand { white-space: nowrap; }
+  @media (max-width: 640px) { nav a:not(.gh) { display: none; } nav a { margin-left: 0; } section { padding: 40px 0; } }
+  section.tight { padding-top: 0; }
+
+  .hero { padding: 40px 0 24px; text-align: center; }
+  .hero img.logo { width: 96px; height: 96px; margin: 0 auto 16px; }
+  .hero h1 { font-size: clamp(2rem, 6vw, 3.2rem); letter-spacing: -.02em; }
+  .hero .lead { margin: 0 auto 28px; }
+  .cta { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 13px 22px; border-radius: 999px;
+         font-weight: 600; text-decoration: none; border: 2px solid var(--acc); color: var(--acc-d); background: transparent; }
+  .btn.primary { background: var(--acc); color: #fff; }
+  @media (prefers-color-scheme: dark) { .btn.primary { color: #06281c; } }
+  .btn:hover { filter: brightness(1.08); }
+  .btn:focus-visible, summary:focus-visible, a:focus-visible { outline: 3px solid var(--warn); outline-offset: 3px; }
+  .ver { color: var(--mut); font-size: .9rem; margin-top: 14px; min-height: 1.4em; }
+
+  .shot { margin: 36px auto 0; max-width: 940px; border-radius: var(--radius); overflow: hidden;
+          border: 1px solid var(--line); box-shadow: var(--shadow); background: var(--card); }
+
+  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; counter-reset: s; margin-top: 26px; }
+  .step, .feat { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); }
+  .step::before { counter-increment: s; content: counter(s); display: inline-grid; place-items: center; width: 34px; height: 34px;
+                  border-radius: 50%; background: var(--acc); color: #fff; font-weight: 700; margin-bottom: 10px; }
+  @media (prefers-color-scheme: dark) { .step::before { color: #06281c; } }
+  .step h3, .feat h3 { font-size: 1.05rem; margin-bottom: .3em; }
+  .step p, .feat p { margin: 0; color: var(--mut); font-size: .98rem; }
+
+  .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 18px; margin-top: 26px; }
+  .feat .ic { font-size: 1.6rem; display: block; margin-bottom: 6px; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 10px; margin: 14px 0 0; padding: 0; list-style: none; }
+  .tag { padding: 4px 12px; border-radius: 999px; font-size: .88rem; font-weight: 600; color: #fff; }
+  .tag.bad { background: var(--bad); } .tag.mid { background: var(--warn); } .tag.good { background: #16a34a; }
+
+  .two { display: grid; grid-template-columns: 1fr; gap: 28px; align-items: center; }
+  @media (min-width: 820px) { .two { grid-template-columns: 1.2fr 1fr; } .two.rev { grid-template-columns: 1fr 1.2fr; } }
+  .two .shot { margin: 0; }
+  .phone { max-width: 340px; margin: 0 auto; }
+
+  details { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); margin: 12px 0; box-shadow: var(--shadow); }
+  summary { cursor: pointer; padding: 16px 20px; font-weight: 600; list-style: none; display: flex; justify-content: space-between; gap: 12px; }
+  summary::-webkit-details-marker { display: none; }
+  summary::after { content: "+"; font-size: 1.3rem; line-height: 1; color: var(--acc-d); }
+  details[open] summary::after { content: "–"; }
+  details .body { padding: 0 20px 18px; color: var(--mut); }
+  details ol { margin: .4em 0 0; padding-left: 1.2em; }
+  code { background: var(--acc-soft); padding: 2px 6px; border-radius: 6px; font-size: .9em; word-break: break-word; }
+
+  .note { background: var(--acc-soft); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 20px; margin-top: 18px; }
+  .note p { margin: 0; }
+  footer { border-top: 1px solid var(--line); padding: 28px 0 40px; color: var(--mut); font-size: .92rem; }
+  footer .wrap { display: grid; gap: 8px; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#"><img src="logo.png" alt="" width="32" height="32"> Správy bez negatív</a>
+    <nav aria-label="Hlavná navigácia">
+      <a href="#ako">Ako to funguje</a>
+      <a href="#instalacia">Inštalácia</a>
+      <a href="#sukromie">Súkromie</a>
+      <a class="gh" href="https://github.com/mejmo/spravy-bez-negativ">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <section class="hero">
+    <div class="wrap">
+      <img class="logo" src="logo.png" alt="Logo rozšírenia: novinová strana s usmiatym slnkom" width="96" height="96">
+      <h1>Správy bez negatív</h1>
+      <p class="lead">Rozšírenie prehliadača, ktoré prečíta nadpisy za teba a skryje správy, ktoré ti pokazia deň. Ostane len to, čo ťa nezaťaží.</p>
+      <div class="cta">
+        <a class="btn primary" id="cta-main" href="https://github.com/mejmo/spravy-bez-negativ/releases/latest/download/spravy-bez-negativ-chrome.zip" download>Stiahnuť pre Chrome</a>
+        <a class="btn" href="#instalacia">Všetky prehliadače</a>
+      </div>
+      <p class="ver" id="ver" aria-live="polite"></p>
+      <div class="shot">
+        <img src="screenshots/vysledok.jpg" alt="Titulka spravodajského webu po filtrovaní: negatívne správy sú skryté, ostávajú pozitívne a neutrálne" width="1247" height="984">
+      </div>
+    </div>
+  </section>
+
+  <section id="ako">
+    <div class="wrap">
+      <h2>Ako to funguje</h2>
+      <p class="lead">Žiadne nastavovanie. Otvoríš web ako zvyčajne, rozšírenie sa postará o zvyšok.</p>
+      <div class="steps">
+        <div class="step"><h3>Nájde správy</h3><p>Prejde titulku aj rubriku Minúta po minúte a zoberie nadpisy správ.</p></div>
+        <div class="step"><h3>Ohodnotí ich AI</h3><p>Každá správa dostane kategóriu (pozitívna, neutrálna, negatívna) a skóre „mentálneho damage“ od 0 do 10.</p></div>
+        <div class="step"><h3>Skryje negatívne</h3><p>Zostane to dobré a vecné. Hodnotenia sa pamätajú, takže pri ďalšej návšteve je všetko okamžité.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="tight">
+    <div class="wrap">
+      <div class="features">
+        <div class="feat"><span class="ic" aria-hidden="true">🛡️</span><h3>Skrýva negatívne správy</h3><p>Vojny, nehody, škandály a hádky ti nevyskočia pri raňajkách. Môžeš ponechať aj neutrálne správy.</p></div>
+        <div class="feat"><span class="ic" aria-hidden="true">🔍</span><h3>Pôvodný web na požiadanie</h3><p>Jedným tlačidlom ukážeš všetko, čo sa skrylo, aj s farebným hodnotením každej správy.</p></div>
+        <div class="feat"><span class="ic" aria-hidden="true">📊</span><h3>Štatistiky</h3><p>Koľko správ rozšírenie skrylo, koľko „damage“ ušetrilo a ako by si na tom bol bez neho.</p></div>
+        <div class="feat"><span class="ic" aria-hidden="true">🚫</span><h3>Skrýva reklamy</h3><p>Reklamné bloky na podporovaných weboch zmiznú, stránka je čistejšia.</p></div>
+        <div class="feat"><span class="ic" aria-hidden="true">🌐</span><h3>Chrome, Edge, Firefox</h3><p>Jeden zdrojový kód, tri prehliadače. Každý má vlastný balík na stiahnutie.</p></div>
+        <div class="feat"><span class="ic" aria-hidden="true">🔓</span><h3>Otvorený kód</h3><p>Všetko je na GitHube. Môžeš si overiť, čo rozšírenie robí a čo posiela.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap two rev">
+      <div>
+        <h2>Pozri, čo ti skryl</h2>
+        <p class="lead">Tlačidlo vľavo dole zobrazí pôvodný web a každú správu označí podľa hodnotenia.</p>
+        <ul class="legend">
+          <li><span class="tag bad">negatívne – skryté</span></li>
+          <li><span class="tag mid">neutrálne</span></li>
+          <li><span class="tag good">pozitívne</span></li>
+        </ul>
+      </div>
+      <div class="shot"><img src="screenshots/porovnanie.jpg" alt="Pôvodný web, na ktorom je pri každej správe farebný štítok s hodnotením" width="1236" height="988" loading="lazy"></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap two">
+      <div class="phone shot"><img src="screenshots/statistiky.png" alt="Okno štatistík: porovnanie zdravia čitateľa s rozšírením a bez neho, počet skrytých správ a ušetrený damage" width="352" height="1040" loading="lazy"></div>
+      <div>
+        <h2>Koľko ti to ušetrilo</h2>
+        <p class="lead">Kliknutím na ikonu rozšírenia uvidíš porovnanie: ako by si na tom bol bez neho a ako si na tom teraz. Čísla sú orientačné odhady, nie lekárska diagnóza.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="instalacia">
+    <div class="wrap">
+      <h2>Inštalácia</h2>
+      <p class="lead">Rozšírenie zatiaľ nie je v obchodoch s doplnkami, nainštaluješ ho ručne. Trvá to asi minútu.</p>
+
+      <details open>
+        <summary>Chrome</summary>
+        <div class="body">
+          <p><a class="btn primary" href="https://github.com/mejmo/spravy-bez-negativ/releases/latest/download/spravy-bez-negativ-chrome.zip" download>Stiahnuť pre Chrome</a></p>
+          <ol>
+            <li>Rozbaľ stiahnutý ZIP do ľubovoľného priečinka.</li>
+            <li>Otvor <code>chrome://extensions</code> a vpravo hore zapni <strong>Developer mode</strong>.</li>
+            <li>Klikni na <strong>Load unpacked</strong> a vyber rozbalený priečinok.</li>
+            <li>Otvor podporovaný web. Hotovo.</li>
+          </ol>
+        </div>
+      </details>
+
+      <details>
+        <summary>Edge</summary>
+        <div class="body">
+          <p><a class="btn primary" href="https://github.com/mejmo/spravy-bez-negativ/releases/latest/download/spravy-bez-negativ-edge.zip" download>Stiahnuť pre Edge</a></p>
+          <ol>
+            <li>Rozbaľ stiahnutý ZIP do ľubovoľného priečinka.</li>
+            <li>Otvor <code>edge://extensions</code> a zapni <strong>Developer mode</strong>.</li>
+            <li>Klikni na <strong>Load unpacked</strong> a vyber rozbalený priečinok.</li>
+          </ol>
+        </div>
+      </details>
+
+      <details>
+        <summary>Firefox</summary>
+        <div class="body">
+          <p><a class="btn primary" href="https://github.com/mejmo/spravy-bez-negativ/releases/latest/download/spravy-bez-negativ-firefox.zip" download>Stiahnuť pre Firefox</a></p>
+          <ol>
+            <li>Otvor <code>about:debugging#/runtime/this-firefox</code>.</li>
+            <li>Klikni na <strong>Load Temporary Add-on…</strong> a vyber stiahnutý ZIP.</li>
+          </ol>
+          <p>V Firefoxe je rozšírenie dočasné a po reštarte prehliadača zmizne. Trvalá inštalácia vyžaduje podpis cez addons.mozilla.org.</p>
+        </div>
+      </details>
+
+      <div class="note"><p><strong>Podporované weby:</strong> dennikn.sk (vrátane <code>www</code> a <code>e.dennikn.sk</code>).</p></div>
+    </div>
+  </section>
+
+  <section id="sukromie">
+    <div class="wrap">
+      <h2>Súkromie</h2>
+      <p class="lead">Rozšírenie je navrhnuté tak, aby o tebe vedelo čo najmenej.</p>
+      <div class="features">
+        <div class="feat"><h3>Čo sa posiela</h3><p>Nadpisy správ (alebo úvodné vety krátkych príspevkov), ich číselné ID a anonymné náhodné ID inštalácie. Slúžia len na ohodnotenie.</p></div>
+        <div class="feat"><h3>Čo sa neposiela</h3><p>Žiadna história prehliadania, adresy navštívených stránok, cookies ani osobné údaje.</p></div>
+        <div class="feat"><h3>Čo ostáva u teba</h3><p>Hodnotenia a štatistiky sa ukladajú iba v tvojom prehliadači a zmažeš ich jedným klikom.</p></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div><a href="https://github.com/mejmo/spravy-bez-negativ">Zdrojový kód na GitHube</a> · <a href="https://github.com/mejmo/spravy-bez-negativ/releases">Všetky verzie</a></div>
+    <div>Nezávislý projekt, nie je spojený so žiadnym spravodajským webom ani vydavateľom. Názvy a obsah stránok patria ich vlastníkom.</div>
+  </div>
+</footer>
+
+<script>
+  // Zvýrazní tlačidlo pre prehliadač návštevníka; bez JavaScriptu ostáva Chrome a všetky sú v sekcii Inštalácia.
+  (function () {
+    var ua = navigator.userAgent, base = "https://github.com/mejmo/spravy-bez-negativ/releases/latest/download/spravy-bez-negativ-";
+    var b = /Edg\//.test(ua) ? ["edge", "Edge"] : /Firefox\//.test(ua) ? ["firefox", "Firefox"] : ["chrome", "Chrome"];
+    var cta = document.getElementById("cta-main");
+    cta.href = base + b[0] + ".zip";
+    cta.textContent = "Stiahnuť pre " + b[1];
+    // číslo poslednej verzie (ak GitHub API odpovie; inak sa nič nezobrazí)
+    fetch("https://api.github.com/repos/mejmo/spravy-bez-negativ/releases/latest")
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) { if (j && j.tag_name) document.getElementById("ver").textContent = "Aktuálna verzia " + j.tag_name; })
+      .catch(function () {});
+  })();
+</script>
+</body>
+</html>
