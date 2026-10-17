@@ -24,8 +24,6 @@ Inštalácia (Firefox): otvoriť `about:debugging#/runtime/this-firefox`, **Load
 ZIP (alebo `manifest.json` z rozbaleného priečinka). Dočasné rozšírenie zmizne po reštarte Firefoxu;
 trvalá inštalácia vyžaduje podpis cez addons.mozilla.org.
 
-> Repozitár je súkromný, takže odkazy fungujú len po prihlásení na GitHub s prístupom k nemu.
-
 ## Čo robí
 
 - Nájde správy (dlaždice článkov aj príspevky „Minúta po minúte“, vrátane widgetu v shadow DOM),
