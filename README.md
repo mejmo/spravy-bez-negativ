@@ -84,6 +84,8 @@ Každý push na `main` a každý pull request prejde kontrolou a zostavením (`.
 | `options.html` / `options.js` | nastavenia |
 | `scripts/` | kontrola (`check.mjs`) a build pre všetky prehliadače (`build.mjs`) |
 | `.github/workflows/` | CI a automatické vydanie |
+| `docs/` | webová stránka (GitHub Pages) a zásady ochrany súkromia (`privacy.html`) |
+| `store/` | podklady pre Chrome Web Store: texty, screenshoty, dlaždica |
 
 ## Dáta
 

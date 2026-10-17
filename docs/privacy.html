@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="sk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zásady ochrany súkromia – Správy bez negatív</title>
+<meta name="description" content="Aké údaje rozšírenie Správy bez negatív posiela, ukladá a komu.">
+<link rel="icon" type="image/png" href="favicon.png">
+<style>
+  :root { --bg:#f7faf8; --card:#fff; --fg:#14201a; --mut:#52615a; --line:#dfe8e3; --acc:#047857; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0f1613; --card:#17211c; --fg:#eaf2ee; --mut:#9db0a6; --line:#26342d; --acc:#6ee7b7; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:17px/1.65 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  .wrap { max-width:760px; margin:0 auto; padding:28px 20px 60px; }
+  a { color:var(--acc); }
+  header { display:flex; align-items:center; gap:10px; margin-bottom:24px; }
+  header img { width:36px; height:36px; }
+  header a { font-weight:700; text-decoration:none; color:var(--fg); }
+  h1 { font-size:clamp(1.7rem,5vw,2.3rem); line-height:1.2; margin:0 0 .3em; }
+  h2 { font-size:1.3rem; margin:1.8em 0 .4em; }
+  p, li { color:var(--fg); }
+  .meta { color:var(--mut); font-size:.95rem; }
+  ul { padding-left:1.2em; }
+  li { margin:.3em 0; }
+  table { width:100%; border-collapse:collapse; margin:.6em 0; font-size:.97rem; }
+  th, td { text-align:left; vertical-align:top; padding:9px 10px; border:1px solid var(--line); }
+  th { background:var(--card); }
+  code { background:var(--card); border:1px solid var(--line); padding:1px 6px; border-radius:6px; font-size:.9em; word-break:break-word; }
+  .tablewrap { overflow-x:auto; }
+  @media (max-width:560px) { body { font-size:16px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><img src="logo.png" alt="" width="36" height="36"><a href="./">Správy bez negatív</a></header>
+
+  <h1>Zásady ochrany súkromia</h1>
+  <p class="meta">Platné od 17. októbra 2026</p>
+
+  <p>Rozšírenie <strong>Správy bez negatív</strong> je navrhnuté tak, aby o tebe vedelo čo najmenej.
+  Táto stránka popisuje, čo sa deje s údajmi, keď ho používaš.</p>
+
+  <h2>Stručne</h2>
+  <ul>
+    <li>Rozšírenie posiela na vyhodnotenie <strong>len nadpisy správ</strong> (alebo úvodné vety krátkych príspevkov) a anonymné náhodné ID inštalácie.</li>
+    <li>Neposiela históriu prehliadania, adresy navštívených stránok, cookies ani žiadne osobné údaje.</li>
+    <li>Nepoužíva analytiku, reklamné ani sledovacie nástroje. Údaje nepredáva ani neposkytuje na iné účely.</li>
+    <li>Hodnotenia a štatistiky sa ukladajú v tvojom prehliadači a môžeš ich kedykoľvek zmazať.</li>
+  </ul>
+
+  <h2>Čo sa posiela na server</h2>
+  <p>Pri návšteve podporovaného webu rozšírenie nájde správy na stránke a pošle na server (na adresu <code>nonegative.replit.app</code>) tieto údaje:</p>
+  <div class="tablewrap">
+  <table>
+    <tr><th>Údaj</th><th>Na čo slúži</th></tr>
+    <tr><td>Nadpis správy, pri krátkych príspevkoch (Minúta po minúte) jej úvodný text, najviac 400 znakov</td><td>Ohodnotenie, či je správa pozitívna, neutrálna alebo negatívna</td></tr>
+    <tr><td>Číselné ID správy</td><td>Priradenie výsledku späť k správe na stránke</td></tr>
+    <tr><td>Anonymné ID inštalácie (náhodné UUID vytvorené v tvojom prehliadači pri prvom použití)</td><td>Ochrana služby pred zneužitím (obmedzenie počtu požiadaviek). Neslúži na identifikáciu osoby.</td></tr>
+    <tr><td>Verzia rozšírenia</td><td>Kompatibilita a diagnostika</td></tr>
+  </table>
+  </div>
+  <p>Ako pri každej internetovej komunikácii vidí server aj technické údaje spojenia, najmä IP adresu a čas požiadavky.
+  Používajú sa na prevádzku a ochranu služby (obmedzenie počtu požiadaviek na jednu inštaláciu a jednu IP adresu).</p>
+
+  <h2>Spracovanie umelou inteligenciou</h2>
+  <p>Server odošle nadpisy na ohodnotenie poskytovateľovi služby umelej inteligencie (OpenAI) a vráti rozšíreniu
+  kategóriu a skóre. Odosielajú sa len texty z predchádzajúcej tabuľky, bez ID inštalácie a bez IP adresy.
+  Poskytovateľ ich spracúva podľa vlastných podmienok.</p>
+
+  <h2>Čo server ukladá</h2>
+  <ul>
+    <li><strong>Výsledky hodnotenia</strong> (cache): aby sa rovnaký nadpis nehodnotil opakovane, výsledok sa uchováva spoločne pre všetkých používateľov štandardne 30 dní.</li>
+    <li><strong>Počítadlá požiadaviek</strong> potrebné na obmedzenie zneužitia.</li>
+  </ul>
+
+  <h2>Čo ostáva v tvojom prehliadači</h2>
+  <p>V lokálnom úložisku rozšírenia (<code>storage.local</code>) sú uložené:</p>
+  <ul>
+    <li>hodnotenia správ (kľúč, kategória) ako cache, aby sa nič nehodnotilo dvakrát,</li>
+    <li>záznam hodnotení pre štatistiky: skrátený nadpis (najviac 160 znakov), kategória, skóre a čas,</li>
+    <li>anonymné ID inštalácie, tvoje nastavenia a stav posledného spojenia so službou.</li>
+  </ul>
+  <p>Tieto údaje neopúšťajú tvoj prehliadač (okrem ID inštalácie, ktoré sa posiela podľa popisu vyššie).
+  Štatistiky zmažeš tlačidlom <em>Zmazať štatistiky</em> v okne rozšírenia, cache v nastaveniach rozšírenia.
+  Všetko sa zmaže aj odinštalovaním rozšírenia.</p>
+
+  <h2>Čo rozšírenie nerobí</h2>
+  <ul>
+    <li>Nečíta ani neodosiela obsah celých článkov, formuláre, heslá, e-maily ani údaje o účte.</li>
+    <li>Nesleduje, ktoré správy otváraš, ani kam klikáš.</li>
+    <li>Nepredáva údaje a nepoužíva ich na reklamu, profilovanie ani hodnotenie bonity.</li>
+  </ul>
+
+  <h2>Oprávnenia rozšírenia</h2>
+  <ul>
+    <li><strong>Prístup k podporovaným webom</strong> (zoznam je na <a href="./">hlavnej stránke</a>): rozšírenie na nich nájde nadpisy správ a skryje negatívne.</li>
+    <li><strong>Prístup k <code>nonegative.replit.app</code></strong>: odosielanie nadpisov na vyhodnotenie.</li>
+    <li><strong>Úložisko (<code>storage</code>)</strong>: uloženie nastavení, cache a štatistík lokálne.</li>
+  </ul>
+
+  <h2>Zmeny a kontakt</h2>
+  <p>Zmeny týchto zásad sa zverejnia na tejto stránke s novým dátumom platnosti. Otázky, požiadavky alebo
+  hlásenia pošli cez <a href="https://github.com/mejmo/spravy-bez-negativ/issues">GitHub Issues</a> projektu.
+  Zdrojový kód rozšírenia je verejný, takže si môžeš overiť, čo robí:
+  <a href="https://github.com/mejmo/spravy-bez-negativ">github.com/mejmo/spravy-bez-negativ</a>.</p>
+
+  <p class="meta">Nezávislý projekt, nie je spojený so žiadnym spravodajským webom ani vydavateľom.</p>
+</div>
+</body>
+</html>
