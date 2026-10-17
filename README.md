@@ -1,8 +1,6 @@
 # Správy bez negatív
 
 Chrome rozšírenie (Manifest V3), ktoré na spravodajskom webe skrýva negatívne a psychicky zaťažujúce správy.
-Hodnotenie robí AI cez vlastnú proxy (`https://nonegative.replit.app/v1/classify`), takže rozšírenie neobsahuje
-žiadny API kľúč.
 
 ## Podporované weby
 - dennikn.sk (vrátane poddomén `www.dennikn.sk` a `e.dennikn.sk`)
