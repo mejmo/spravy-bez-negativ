@@ -4,6 +4,9 @@ Chrome rozšírenie (Manifest V3), ktoré na spravodajskom webe skrýva negatív
 Hodnotenie robí AI cez vlastnú proxy (`https://nonegative.replit.app/v1/classify`), takže rozšírenie neobsahuje
 žiadny API kľúč.
 
+## Podporované weby
+- dennikn.sk (vrátane poddomén `www.dennikn.sk` a `e.dennikn.sk`)
+
 ## Čo robí
 - Nájde správy (dlaždice článkov aj príspevky „Minúta po minúte“, vrátane widgetu v shadow DOM),
   pošle ich titulky na vyhodnotenie a negatívne skryje.
