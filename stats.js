@@ -1,4 +1,6 @@
-// Štatistiky „mentálneho damage“ z logu, ktorý plní content.js (chrome.storage.local.dnnLog).
+// Chrome/Edge: `chrome`, Firefox: `browser` (s promisami)
+const api = globalThis.browser ?? globalThis.chrome;
+// Štatistiky „mentálneho damage“ z logu, ktorý plní content.js (api.storage.local.dnnLog).
 const HP_K = 0.25;          // koľko HP ubudne za 1 bod damage za deň (odhad z prsta)
 const MIN_PER = { article: 5, minute: 1 }; // minúty trápenia ušetrené jednou správou
 
@@ -151,7 +153,7 @@ function renderDiag(st) {
 }
 
 async function load(range) {
-  const s = await chrome.storage.local.get(["dnnLog", "allowNeutral", "dnnSince", "lastProxyStatus"]);
+  const s = await api.storage.local.get(["dnnLog", "allowNeutral", "dnnSince", "lastProxyStatus"]);
   renderDiag(s.lastProxyStatus);
   render(s.dnnLog || {}, s.allowNeutral !== false, s.dnnSince, range);
 }
@@ -165,8 +167,8 @@ $("#tabs").addEventListener("click", (e) => {
 });
 $("#reset").addEventListener("click", async () => {
   if (!confirm("Zmazať celú štatistiku? Hodnotenia v cache ostanú.")) return;
-  await chrome.storage.local.remove(["dnnLog", "dnnSince"]);
+  await api.storage.local.remove(["dnnLog", "dnnSince"]);
   load(range);
 });
-chrome.storage.onChanged.addListener(() => load(range));
+api.storage.onChanged.addListener(() => load(range));
 load(range);

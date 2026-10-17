@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Kontrola (manifest, súbory, syntax, tajomstvá)
+        run: node scripts/check.mjs
+
+      - name: Zostavenie balíkov (Chrome, Edge, Firefox)
+        run: node scripts/build.mjs
+
+      - name: Validácia Firefox balíka (web-ext lint)
+        run: npx --yes web-ext@10 lint --source-dir dist/firefox
+
+      - name: Nahranie balíkov ako artefakty
+        uses: actions/upload-artifact@v4
+        with:
+          name: balicky
+          path: dist/*.zip
+          if-no-files-found: error

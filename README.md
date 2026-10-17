@@ -8,15 +8,23 @@
 
 ## Stiahnutie
 
-**[Stiahnuť rozšírenie (ZIP)](https://github.com/mejmo/spravy-bez-negativ/releases/latest/download/spravy-bez-negativ.zip)**
-· [všetky verzie](https://github.com/mejmo/spravy-bez-negativ/releases)
+Balíky z [najnovšieho vydania](https://github.com/mejmo/spravy-bez-negativ/releases/latest)
+(všetky verzie: [releases](https://github.com/mejmo/spravy-bez-negativ/releases)):
 
-Inštalácia:
-1. Rozbaliť ZIP do ľubovoľného priečinka.
-2. Otvoriť `chrome://extensions` a zapnúť **Developer mode**.
-3. Kliknúť na **Load unpacked** a vybrať rozbalený priečinok.
+| Prehliadač | Súbor |
+|---|---|
+| Chrome | [spravy-bez-negativ-chrome.zip](https://github.com/mejmo/spravy-bez-negativ/releases/latest/download/spravy-bez-negativ-chrome.zip) |
+| Edge | [spravy-bez-negativ-edge.zip](https://github.com/mejmo/spravy-bez-negativ/releases/latest/download/spravy-bez-negativ-edge.zip) |
+| Firefox | [spravy-bez-negativ-firefox.zip](https://github.com/mejmo/spravy-bez-negativ/releases/latest/download/spravy-bez-negativ-firefox.zip) |
 
-> Repozitár je súkromný, takže odkaz funguje len po prihlásení na GitHub s prístupom k nemu.
+Inštalácia (Chrome, Edge): rozbaliť ZIP, otvoriť `chrome://extensions` (v Edge `edge://extensions`),
+zapnúť **Developer mode** a cez **Load unpacked** vybrať rozbalený priečinok.
+
+Inštalácia (Firefox): otvoriť `about:debugging#/runtime/this-firefox`, **Load Temporary Add-on…** a vybrať
+ZIP (alebo `manifest.json` z rozbaleného priečinka). Dočasné rozšírenie zmizne po reštarte Firefoxu;
+trvalá inštalácia vyžaduje podpis cez addons.mozilla.org.
+
+> Repozitár je súkromný, takže odkazy fungujú len po prihlásení na GitHub s prístupom k nemu.
 
 ## Čo robí
 
@@ -43,21 +51,39 @@ Tlačidlo vľavo dole zobrazí pôvodný web a označí hodnotenie každej sprá
 
 <img src="docs/screenshots/statistiky.png" alt="Štatistiky" width="320">
 
-## Spustenie zo zdrojového kódu
+## Vývoj
 
-1. `chrome://extensions` → zapnúť Developer mode → **Load unpacked** → vybrať tento priečinok.
-2. Otvoriť spravodajský web. Netreba žiadny kľúč.
+Jeden zdrojový kód pre Chrome, Edge aj Firefox (kód používa `browser`, ak existuje, inak `chrome`).
+
+```
+node scripts/check.mjs     # kontrola manifestu, súborov, syntaxe a tajomstiev
+node scripts/build.mjs     # zostaví dist/ pre chrome, edge a firefox (bez závislostí)
+```
+
+Z priečinka `dist/chrome` (alebo `dist/edge`) sa dá rozšírenie načítať cez **Load unpacked**.
+Priamo z koreňa repozitára sa načíta Chromium verzia manifestu.
+
+### Vydanie novej verzie
+
+1. Zvýšiť `version` v `manifest.json` a commitnúť.
+2. `git tag vX.Y.Z && git push origin vX.Y.Z`.
+3. GitHub Actions (`.github/workflows/release.yml`) skontroluje, že tag zodpovedá verzii, zostaví balíky,
+   zvaliduje Firefox balík a vytvorí release s tromi ZIP-mi.
+
+Každý push na `main` a každý pull request prejde kontrolou a zostavením (`.github/workflows/ci.yml`).
 
 ## Súbory
 
 | Súbor | Účel |
 |---|---|
-| `manifest.json` | oprávnenia a registrácia skriptov |
+| `manifest.json` | oprávnenia a registrácia skriptov (Chromium; pre Firefox ho upraví build) |
 | `icons/` | ikony rozšírenia (16, 32, 48, 128 px) a zdroj `icon.svg` |
 | `background.js` | klient AI proxy (installId, dávky, validácia odpovede) |
 | `content.js` | hľadanie správ, skrývanie, indikátor načítania, tlačidlo |
 | `stats.html` / `stats.js` | popup so štatistikami |
 | `options.html` / `options.js` | nastavenia |
+| `scripts/` | kontrola (`check.mjs`) a build pre všetky prehliadače (`build.mjs`) |
+| `.github/workflows/` | CI a automatické vydanie |
 
 ## Dáta
 

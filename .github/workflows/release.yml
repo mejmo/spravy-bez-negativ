@@ -1,0 +1,50 @@
+name: Release
+
+# Vydanie sa spustí pushom tagu v*, napr.:  git tag v1.2.0 && git push origin v1.2.0
+# Tag musí zodpovedať verzii v manifest.json (kontroluje to scripts/check.mjs).
+# Ručné spustenie (workflow_dispatch) balíky len zostaví a nahrá ako artefakt, nič nepublikuje.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Kontrola (vrátane zhody tagu s verziou v manifeste)
+        run: node scripts/check.mjs
+
+      - name: Zostavenie balíkov (Chrome, Edge, Firefox)
+        run: node scripts/build.mjs
+
+      - name: Validácia Firefox balíka (web-ext lint)
+        run: npx --yes web-ext@10 lint --source-dir dist/firefox
+
+      - name: Nahranie balíkov ako artefakty
+        uses: actions/upload-artifact@v4
+        with:
+          name: balicky
+          path: dist/*.zip
+          if-no-files-found: error
+
+      - name: Vytvorenie / aktualizácia release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/*.zip --clobber
+          else
+            gh release create "$TAG" dist/*.zip --title "Správy bez negatív ${TAG#v}" --generate-notes
+          fi

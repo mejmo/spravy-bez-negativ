@@ -1,4 +1,6 @@
 (() => {
+  // Chrome/Edge: `chrome`, Firefox: `browser` (s promisami)
+  const api = globalThis.browser ?? globalThis.chrome;
   const CACHE_KEY = "dnnCache"; // { [postId]: "positive" | "neutral" | "negative" }
   const BATCH = 25;
   let cache = {};
@@ -77,7 +79,7 @@ ${REVEAL_CSS}
 
   function discoverRoots() {
     document.querySelectorAll(SHADOW_HOST_SELECTOR).forEach((host) => {
-      const sr = host.shadowRoot;
+      const sr = host.openOrClosedShadowRoot || api.dom?.openOrClosedShadowRoot?.(host) || host.shadowRoot;
       if (!sr || observedRoots.has(sr)) return;
       observedRoots.add(sr);
       shadowHosts.add(host);
@@ -134,7 +136,7 @@ ${REVEAL_CSS}
     return saveChain;
   }
   async function doSaveCache(fresh, freshLog) {
-    const stored = await chrome.storage.local.get([CACHE_KEY, LOG_KEY, "dnnSince"]);
+    const stored = await api.storage.local.get([CACHE_KEY, LOG_KEY, "dnnSince"]);
     const merged = { ...(stored[CACHE_KEY] || {}), ...fresh };
     Object.keys(merged).forEach((k) => { if (!k.includes(":")) delete merged[k]; }); // staré kľúče bez titulku
     const keys = Object.keys(merged);
@@ -145,7 +147,7 @@ ${REVEAL_CSS}
     if (ids.length > 4000) {
       ids.sort((a, b) => log[a].ts - log[b].ts).slice(0, ids.length - 3000).forEach((k) => delete log[k]);
     }
-    await chrome.storage.local.set({
+    await api.storage.local.set({
       [CACHE_KEY]: merged,
       [LOG_KEY]: log,
       dnnSince: stored.dnnSince || Date.now()
@@ -241,7 +243,7 @@ ${REVEAL_CSS}
     const items = chunk.map(([id, v]) => ({ id, title: v.title }));
     let resp;
     try {
-      resp = await chrome.runtime.sendMessage({ type: "classify", items });
+      resp = await api.runtime.sendMessage({ type: "classify", items });
     } catch (e) {
       resp = { ok: false, error: "network" };
     }
@@ -369,7 +371,7 @@ ${REVEAL_CSS}
 
   async function init() {
     addToggle();
-    const s = await chrome.storage.local.get([CACHE_KEY, "allowNeutral"]);
+    const s = await api.storage.local.get([CACHE_KEY, "allowNeutral"]);
     cache = Object.fromEntries(Object.entries(s[CACHE_KEY] || {}).filter(([k]) => k.includes(":")));
     allowNeutral = s.allowNeutral !== false;
     scan();
@@ -377,7 +379,7 @@ ${REVEAL_CSS}
     // shadow root sa môže objaviť až po načítaní React aplikácie
     setInterval(scan, 1500);
 
-    chrome.storage.onChanged.addListener((ch) => {
+    api.storage.onChanged.addListener((ch) => {
       if (!ch.allowNeutral) return;
       allowNeutral = ch.allowNeutral.newValue !== false;
       queryItems().forEach((tile) => {

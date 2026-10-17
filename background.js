@@ -1,4 +1,6 @@
 // Klient AI proxy. Rozšírenie nevolá OpenAI a nemá žiadny API kľúč.
+// Chrome/Edge: `chrome`, Firefox: `browser` (s promisami)
+const api = globalThis.browser ?? globalThis.chrome;
 const PROXY_URL = "https://nonegative.replit.app/v1/classify";
 const MAX_ITEMS = 25;
 const MAX_TITLE = 400;
@@ -12,10 +14,10 @@ let installIdPromise = null;
 function getInstallId() {
   if (!installIdPromise) {
     installIdPromise = (async () => {
-      const { installId } = await chrome.storage.local.get("installId");
+      const { installId } = await api.storage.local.get("installId");
       if (typeof installId === "string" && UUID4_RE.test(installId)) return installId;
       const id = crypto.randomUUID();
-      await chrome.storage.local.set({ installId: id });
+      await api.storage.local.set({ installId: id });
       return id;
     })().catch((e) => {
       installIdPromise = null;
@@ -56,7 +58,7 @@ async function readError(res) {
 
 // Posledný stav komunikácie s proxy (pre diagnostiku v štatistikách): odkiaľ presne prišla chyba.
 async function recordStatus(s) {
-  try { await chrome.storage.local.set({ lastProxyStatus: { ts: Date.now(), ...s } }); } catch {}
+  try { await api.storage.local.set({ lastProxyStatus: { ts: Date.now(), ...s } }); } catch {}
 }
 
 // Jedna HTTP požiadavka, jeden pokus. Žiadne pauzy ani opakovania: keď to nejde, správy sa jednoducho
@@ -70,7 +72,7 @@ async function postBatch(items) {
       headers: {
         "Content-Type": "application/json",
         "X-Install-Id": installId,
-        "X-Ext-Version": chrome.runtime.getManifest().version
+        "X-Ext-Version": api.runtime.getManifest().version
       },
       body: JSON.stringify({ items })
     });
@@ -146,7 +148,7 @@ async function classify(rawItems) {
   return results.length ? { ok: true, results } : { ok: false, error: "bad_response", results };
 }
 
-chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+api.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg?.type !== "classify") return;
   serialize(() => classify(msg.items))
     .then(sendResponse)
@@ -155,6 +157,6 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 });
 
 // Zvyšok po starých verziách: lokálne uložený OpenAI kľúč už nikdy nepotrebujeme.
-const dropOldKey = () => chrome.storage.local.remove(["apiKey", "proxyPausedUntil"]);
-chrome.runtime.onInstalled.addListener(dropOldKey);
-chrome.runtime.onStartup.addListener(dropOldKey);
+const dropOldKey = () => api.storage.local.remove(["apiKey", "proxyPausedUntil"]);
+api.runtime.onInstalled.addListener(dropOldKey);
+api.runtime.onStartup.addListener(dropOldKey);

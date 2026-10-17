@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Správy bez negatív",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Skryje na spravodajskom webe správy, ktoré sú negatívne alebo psychicky zaťažujúce. Hodnotenie robí AI.",
   "permissions": [
     "storage"
