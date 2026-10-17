@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/logo.png" alt="Logo Správy bez negatív" width="128"></p>
+
 # Správy bez negatív
 
 Chrome rozšírenie (Manifest V3), ktoré na spravodajskom webe skrýva negatívne a psychicky zaťažujúce správy.
@@ -35,6 +37,7 @@ Chrome rozšírenie (Manifest V3), ktoré na spravodajskom webe skrýva negatív
 | Súbor | Účel |
 |---|---|
 | `manifest.json` | oprávnenia a registrácia skriptov |
+| `icons/` | ikony rozšírenia (16, 32, 48, 128 px) a zdroj `icon.svg` |
 | `background.js` | klient AI proxy (installId, dávky, validácia odpovede) |
 | `content.js` | hľadanie správ, skrývanie, indikátor načítania, tlačidlo |
 | `stats.html` / `stats.js` | popup so štatistikami |
