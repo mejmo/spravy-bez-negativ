@@ -27,10 +27,3 @@ jobs:
 
       - name: Validácia Firefox balíka (web-ext lint)
         run: npx --yes web-ext@10 lint --source-dir dist/firefox
-
-      - name: Nahranie balíkov ako artefakty
-        uses: actions/upload-artifact@v4
-        with:
-          name: balicky
-          path: dist/*.zip
-          if-no-files-found: error
