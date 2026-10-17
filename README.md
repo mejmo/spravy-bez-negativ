@@ -6,6 +6,18 @@
 
 <p align="center"><img src="docs/screenshots/vysledok.jpg" alt="Titulka po filtrovaní" width="760"></p>
 
+## Stiahnutie
+
+**[Stiahnuť rozšírenie (ZIP)](https://github.com/mejmo/spravy-bez-negativ/releases/latest/download/spravy-bez-negativ.zip)**
+· [všetky verzie](https://github.com/mejmo/spravy-bez-negativ/releases)
+
+Inštalácia:
+1. Rozbaliť ZIP do ľubovoľného priečinka.
+2. Otvoriť `chrome://extensions` a zapnúť **Developer mode**.
+3. Kliknúť na **Load unpacked** a vybrať rozbalený priečinok.
+
+> Repozitár je súkromný, takže odkaz funguje len po prihlásení na GitHub s prístupom k nemu.
+
 ## Čo robí
 
 - Nájde správy (dlaždice článkov aj príspevky „Minúta po minúte“, vrátane widgetu v shadow DOM),
@@ -31,7 +43,7 @@ Tlačidlo vľavo dole zobrazí pôvodný web a označí hodnotenie každej sprá
 
 <img src="docs/screenshots/statistiky.png" alt="Štatistiky" width="320">
 
-## Spustenie lokálne
+## Spustenie zo zdrojového kódu
 
 1. `chrome://extensions` → zapnúť Developer mode → **Load unpacked** → vybrať tento priečinok.
 2. Otvoriť spravodajský web. Netreba žiadny kľúč.
