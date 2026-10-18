@@ -5,9 +5,12 @@ const PROXY_URL = "https://nonegative.replit.app/v1/classify";
 const MAX_ITEMS = 25;
 const MAX_TITLE = 400;
 const MAX_BODY_BYTES = 40 * 1024;
-const ID_RE = /^m?\d{1,12}$/;
+// ID: 1-128 znakov, prvý znak písmeno/číslo (napr. "5630008", "m123456", "cas.sk:slug-clanku")
+const ID_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
+const DOMAIN_RE = /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/;
 const UUID4_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const CATEGORIES = new Set(["positive", "neutral", "negative"]);
+const TOPICS = new Set(["slovak_politics", "foreign_politics", "sports", "other"]);
 
 // ---- identifikácia inštalácie (jedno ID, súbežné prvé volania zdieľajú ten istý promise) ----
 let installIdPromise = null;
@@ -45,6 +48,13 @@ function serialize(fn) {
 }
 
 const normTitle = (t) => String(t ?? "").replace(/\s+/g, " ").trim().slice(0, MAX_TITLE);
+// Zdroj = doména bez protokolu, portu a cesty, malé písmená, bez úvodného "www.", najviac 253 znakov.
+// Neplatný alebo chýbajúci zdroj vrátime ako null a pole sa nepošle (server použije predvolený web).
+function normSource(s) {
+  if (typeof s !== "string") return null;
+  const d = s.trim().toLowerCase().replace(/^[a-z][a-z0-9+.-]*:\/\//, "").split(/[/?#]/)[0].replace(/:\d+$/, "").replace(/^www\./, "");
+  return d.length <= 253 && DOMAIN_RE.test(d) ? d : null;
+}
 const bodyBytes = (items) => new TextEncoder().encode(JSON.stringify({ items })).length;
 
 async function readError(res) {
@@ -104,7 +114,8 @@ function validate(data, wanted) {
     if (!CATEGORIES.has(r.category)) continue;
     if (!Number.isInteger(r.damage) || r.damage < 0 || r.damage > 10) continue;
     seen.add(id);
-    out.push({ id, category: r.category, damage: r.damage });
+    // topic zatiaľ len prenášame; neplatný alebo chýbajúci nie je dôvod výsledok zahodiť
+    out.push({ id, category: r.category, damage: r.damage, topic: TOPICS.has(r.topic) ? r.topic : null });
   }
   return out;
 }
@@ -127,7 +138,7 @@ function makeBatches(items) {
 }
 
 async function classify(rawItems) {
-  // sanitizácia: platné ID, jedinečné ID, normalizovaný titulok, nič iné
+  // sanitizácia: platné ID, jedinečné ID, normalizovaný titulok a zdroj, nič iné
   const items = [];
   const ids = new Set();
   for (const r of Array.isArray(rawItems) ? rawItems : []) {
@@ -135,7 +146,8 @@ async function classify(rawItems) {
     const title = normTitle(r?.title);
     if (!ID_RE.test(id) || !title || ids.has(id)) continue;
     ids.add(id);
-    items.push({ id, title });
+    const source = normSource(r?.source);
+    items.push(source ? { id, title, source } : { id, title });
   }
   if (!items.length) return { ok: true, results: [] };
 

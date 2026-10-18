@@ -1,7 +1,8 @@
 (() => {
   // Chrome/Edge: `chrome`, Firefox: `browser` (s promisami)
   const api = globalThis.browser ?? globalThis.chrome;
-  const CACHE_KEY = "dnnCache"; // { [postId]: "positive" | "neutral" | "negative" }
+  const CACHE_KEY = "dnnCache"; // { [v2|zdroj|id|hash]: { c: kategória, t: topic|null } }
+  const CACHE_PREFIX = "v2|";   // verzia formátu cache; staršie záznamy (bez topic) sa zahodia a vyžiadajú znova
   const BATCH = 25;
   let cache = {};
   let allowNeutral = true;
@@ -9,9 +10,109 @@
   const inflight = new Map(); // id -> { title, tiles[] } odoslané alebo čakajúce
   let timer = null;
   const seen = new WeakSet();
-  const ITEM_SELECTOR = "article.n3_tile, .mnt-Post-hash";
-  // Widget „Minúta po minúte“ na titulke žije v shadow DOM; hostiteľ má túto triedu.
-  const SHADOW_HOST_SELECTOR = ".n3_box__app";
+
+  // Titulok: zlúčené biele znaky, najviac 400 znakov (rovnaká normalizácia ako na serveri).
+  const ID_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
+  const norm = (t) => (t || "").replace(/\s+/g, " ").trim().slice(0, 400);
+  // Text bez vložených <script>/<style> (v niektorých titulkoch sú).
+  function cleanText(node) {
+    const c = node.cloneNode(true);
+    c.querySelectorAll("script, style, noscript").forEach((n) => n.remove());
+    return (c.textContent || "").trim().replace(/\s+/g, " ");
+  }
+  function fnv(str) {
+    let h = 0x811c9dc5;
+    for (let i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i);
+      h = Math.imul(h, 0x01000193) >>> 0;
+    }
+    return h.toString(16).padStart(8, "0");
+  }
+
+  // ======== ADAPTÉRY WEBOV ========
+  // Adaptér hovorí, ktoré prvky sú správy a ako z nich dostať ID a titulok:
+  //   source               doména zdroja (posiela sa na server)
+  //   candidates(root)     prvky, ktoré môžu byť správou
+  //   extract(el)          {id, title} | {skip:true} | {ad:true} | null (obsah ešte nie je vykreslený)
+  //   target(el)           (voliteľné) prvok, ktorý sa skrýva/označuje; predvolene `el`
+  //   shadowHostSelector   (voliteľné) hostiteľ shadow DOM, v ktorom žijú správy
+  //   adCss                CSS na skrytie reklám na danom webe
+  const DENNIKN = {
+    source: "dennikn.sk",
+    // Widget „Minúta po minúte“ na titulke žije v shadow DOM; hostiteľ má túto triedu.
+    shadowHostSelector: ".n3_box__app",
+    adCss: `.n3_ad:not(#protag-custom-consent), .proads-space, [id^="remp-banner"],
+iframe[id^="google_ads_iframe"], [id$="-ad-unit"], ins.adsbygoogle { display: none !important; }`,
+    candidates: (root) => root.querySelectorAll("article.n3_tile, .mnt-Post-hash"),
+    extract(el) {
+      if (el.matches("article.n3_tile")) {
+        const a = el.querySelector(".n3_tile_title a");
+        if (!a) {
+          // dlaždica „Minúta po minúte“ nemá nadpis; text je v .n3_tile_content, data-beam je "dn_mpm <id>"
+          const c = el.classList.contains("n3_tile__minute") && el.querySelector(".n3_tile_content");
+          const mm = c && (el.dataset.beam || "").match(/\s(\d{1,12})$/);
+          return mm && { id: "m" + mm[1], title: norm(cleanText(c)) };
+        }
+        // data-beam je napr. "post 5630008" alebo "dn_blog 5613360"; záloha: číslo v ceste URL
+        const m = (el.dataset.beam || "").match(/\s(\d{1,12})$/) || a.href.match(/dennikn\.sk\/(?:[a-z-]+\/)?(\d{1,12})\//);
+        return m && { id: m[1], title: norm(cleanText(a)) };
+      }
+      // .mnt-Post-hash má id príspevku; text je v .mnt-article (úvodná veta býva v <strong>)
+      const body = el.querySelector(".mnt-article");
+      if (!el.id || !body) return null;
+      return { id: "m" + el.id, title: norm(cleanText(body)) };
+    }
+  };
+
+  // cas.sk: <article> neobsahuje odkaz, ale je v ňom obalený (<a><article>…). URL nemá číselné ID, len
+  // slug v ceste. Triedy majú hash (SimpleArticleTile_article__heADL), preto sa spoliehame na štruktúru.
+  const CAS_FAMILY = /(^|\.)(cas|pluska|trend)\.sk$/;
+  const CAS = {
+    source: "cas.sk",
+    adCss: `[id^="main-advertisement-wrapper"], [class*="ReklamnyBox"], [id^="ad-"][id$="-id"],
+iframe[id^="goog_"], iframe[id^="google_ads"], ins.adsbygoogle { display: none !important; }`,
+    // <article> dlaždice + textové riadky zoznamu „Najčítanejšie“ (li.*text-article > a), ktoré <article> nemajú
+    candidates: (root) => root.querySelectorAll("article, li[class*='text-article']"),
+    // Skrývame najvyšší obal, ktorý obsahuje len túto dlaždicu (article > a > div > li), inak ostanú
+    // prázdne miesta v mriežke/karuseli. Najviac 4 úrovne a nikdy nie body/main.
+    target(article) {
+      let el = article;
+      for (let i = 0; i < 4; i++) {
+        const p = el.parentElement;
+        if (!p || p.children.length !== 1 || /^(BODY|MAIN|HTML)$/.test(p.tagName)) break;
+        el = p;
+      }
+      return el;
+    },
+    extract(article) {
+      // Dlaždica je v odkaze (a > article). Samotný otvorený článok (article bez obalového odkazu, vnútri má
+      // len odkazy na autora a pod.) sa nikdy nefiltruje. Výnimka: riadok zoznamu li > a.
+      const a = article.closest("a[href]") || (article.tagName === "LI" ? article.querySelector("a[href]") : null);
+      if (!a) return { skip: true };
+      let u;
+      try { u = new URL(a.href, location.href); } catch { return { skip: true }; }
+      // platený obsah a externé weby (advertoriály) berieme ako reklamu: bez vyhodnotenia
+      if (!CAS_FAMILY.test(u.hostname) || /^\/pr-clanky\//.test(u.pathname)) return { ad: true };
+      const h = article.querySelector("h1, h2, h3, h4, [class*='title']") || (article.tagName === "LI" ? a : null);
+      if (!h) return null;
+      const title = norm(cleanText(h));
+      const parts = u.pathname.split("/").filter(Boolean);
+      let slug = parts[parts.length - 1];
+      if (!slug) return { skip: true };
+      try { slug = decodeURIComponent(slug); } catch { /* ostane pôvodný */ }
+      // videá a rubriky nemajú vlastný slug (napr. /video-space?videoId=123): rozlíšiť podľa videoId alebo titulku
+      const vid = u.searchParams.get("videoId");
+      if (vid) slug += "-" + vid;
+      else if (parts.length < 2) slug += "-" + fnv(title);
+      slug = slug.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^A-Za-z0-9._:-]/g, "-"); // diakritika -> ASCII
+      if (slug.length > 110) slug = slug.slice(0, 100) + "-" + fnv(slug); // ID má najviac 128 znakov
+      return { id: "cas.sk:" + slug, title };
+    }
+  };
+
+  const hostname = location.hostname.replace(/^www\./, "");
+  const ADAPTER = { "cas.sk": CAS }[hostname] || DENNIKN;
+  const SOURCE = ADAPTER.source;
 
   // Štýly: do dokumentu aj do každého shadow rootu (page CSS ani náš súbor tam nesiaha).
   // V shadow roote nahrádzame `body.dnn-reveal` za `:host(.dnn-reveal)`.
@@ -33,9 +134,9 @@
 
   const CSS = `
 .dnn-pending, .dnn-hidden { display: none !important; }
-/* reklamy a promo bannery (consent dialóg nechávame na pokoji) */
-.n3_ad:not(#protag-custom-consent), .proads-space, [id^="remp-banner"],
-iframe[id^="google_ads_iframe"], [id$="-ad-unit"], ins.adsbygoogle { display: none !important; }
+/* reklamy a promo bannery podľa webu (consent dialóg nechávame na pokoji) */
+${ADAPTER.adCss}
+.dnn-ad { display: none !important; }
 body.dnn-reveal .dnn-hidden { display: block !important; }
 ${REVEAL_CSS}
 #dnn-toggle {
@@ -78,7 +179,8 @@ ${REVEAL_CSS}
   const shadowHosts = new Set();
 
   function discoverRoots() {
-    document.querySelectorAll(SHADOW_HOST_SELECTOR).forEach((host) => {
+    if (!ADAPTER.shadowHostSelector) return;
+    document.querySelectorAll(ADAPTER.shadowHostSelector).forEach((host) => {
       const sr = host.openOrClosedShadowRoot || api.dom?.openOrClosedShadowRoot?.(host) || host.shadowRoot;
       if (!sr || observedRoots.has(sr)) return;
       observedRoots.add(sr);
@@ -87,12 +189,6 @@ ${REVEAL_CSS}
       if (document.body.classList.contains("dnn-reveal")) host.classList.add("dnn-reveal");
       new MutationObserver(scan).observe(sr, { childList: true, subtree: true });
     });
-  }
-
-  function queryItems() {
-    const out = [];
-    observedRoots.forEach((r) => out.push(...r.querySelectorAll(ITEM_SELECTOR)));
-    return out;
   }
 
   function apply(tile, cat) {
@@ -113,20 +209,11 @@ ${REVEAL_CSS}
     banner.t = setTimeout(() => b.remove(), 10000);
   }
 
-  // Titulok: zlúčené biele znaky, najviac 400 znakov (rovnaká normalizácia ako na serveri).
-  const ID_RE = /^m?\d{1,12}$/;
-  const norm = (t) => (t || "").replace(/\s+/g, " ").trim().slice(0, 400);
-  // Kľúč cache obsahuje ID aj normalizovaný titulok (FNV-1a hash), nie iba ID.
-  function ckey(id, title) {
-    let h = 0x811c9dc5;
-    for (let i = 0; i < title.length; i++) {
-      h ^= title.charCodeAt(i);
-      h = Math.imul(h, 0x01000193) >>> 0;
-    }
-    return id + ":" + h.toString(16);
-  }
+  // Kľúč cache: verzia formátu, zdroj, ID aj normalizovaný titulok (hash), nie iba ID.
+  const ckey = (source, id, title) => `${CACHE_PREFIX}${source}|${id}|${fnv(title)}`;
+  const validEntry = (v) => v && typeof v === "object" && ["positive", "neutral", "negative"].includes(v.c);
 
-  const LOG_KEY = "dnnLog"; // { [id]: { t: titulok, c: kategória, d: damage 0-10, ts: čas, s: "article"|"minute" } }
+  const LOG_KEY = "dnnLog"; // { [id]: { t: titulok, c: kategória, d: damage 0-10, p: topic|null, src: zdroj, ts: čas, s: "article"|"minute" } }
 
   // Zlúči nové hodnotenia s tým, čo už je v úložisku (iné karty ho mohli doplniť).
   let saveChain = Promise.resolve();
@@ -138,7 +225,7 @@ ${REVEAL_CSS}
   async function doSaveCache(fresh, freshLog) {
     const stored = await api.storage.local.get([CACHE_KEY, LOG_KEY, "dnnSince"]);
     const merged = { ...(stored[CACHE_KEY] || {}), ...fresh };
-    Object.keys(merged).forEach((k) => { if (!k.includes(":")) delete merged[k]; }); // staré kľúče bez titulku
+    Object.keys(merged).forEach((k) => { if (!k.startsWith(CACHE_PREFIX) || !validEntry(merged[k])) delete merged[k]; }); // staré formáty
     const keys = Object.keys(merged);
     if (keys.length > 5000) keys.slice(0, keys.length - 4000).forEach((k) => delete merged[k]);
 
@@ -240,7 +327,7 @@ ${REVEAL_CSS}
   // Vyhodnotí jednu dávku (viac dávok môže bežať súčasne).
   async function processChunk(chunk) {
     const byId = new Map(chunk);
-    const items = chunk.map(([id, v]) => ({ id, title: v.title }));
+    const items = chunk.map(([id, v]) => ({ id, title: v.title, source: SOURCE }));
     let resp;
     try {
       resp = await api.runtime.sendMessage({ type: "classify", items });
@@ -257,10 +344,10 @@ ${REVEAL_CSS}
       const entry = byId.get(String(r.id));
       if (!entry || done.has(String(r.id))) continue;
       done.add(String(r.id));
-      fresh[entry.ckey] = r.category;
+      entry.ckeys.forEach((k) => { fresh[k] = { c: r.category, t: r.topic ?? null }; });
       freshLog[r.id] = {
-        t: entry.title.slice(0, 160), c: r.category, d: r.damage ?? 0,
-        ts: Date.now(), s: String(r.id).startsWith("m") ? "minute" : "article"
+        t: entry.title.slice(0, 160), c: r.category, d: r.damage ?? 0, p: r.topic ?? null, src: SOURCE,
+        ts: Date.now(), s: SOURCE === "dennikn.sk" && String(r.id).startsWith("m") ? "minute" : "article"
       };
       entry.tiles.forEach((t) => apply(t, r.category));
       inflight.delete(String(r.id));
@@ -277,10 +364,7 @@ ${REVEAL_CSS}
   }
 
   // Čo je na obrazovke (alebo najbližšie k nej) ide na vyhodnotenie prvé.
-  function priority(entry) {
-    const r = entry.tiles[0].getBoundingClientRect();
-    return r.height === 0 ? 1e9 : Math.abs(r.top);
-  }
+  const priority = (entry) => entry.pri;
 
   async function flush() {
     timer = null;
@@ -293,55 +377,31 @@ ${REVEAL_CSS}
     await Promise.all(Array.from({ length: Math.min(CONCURRENCY, chunks.length) }, worker));
   }
 
-  // Položky, ktoré filtrujeme: dlaždice článkov a príspevky z „Minúta po minúte“ (React app).
-  // Text bez vložených <script>/<style> (v niektorých titulkoch sú).
-  function cleanText(node) {
-    const c = node.cloneNode(true);
-    c.querySelectorAll("script, style, noscript").forEach((n) => n.remove());
-    return (c.textContent || "").trim().replace(/\s+/g, " ");
-  }
-
-  function extract(el) {
-    if (el.matches("article.n3_tile")) {
-      const a = el.querySelector(".n3_tile_title a");
-      if (!a) {
-        // dlaždica „Minúta po minúte“ nemá nadpis; text je v .n3_tile_content, data-beam je "dn_mpm <id>"
-        const c = el.classList.contains("n3_tile__minute") && el.querySelector(".n3_tile_content");
-        const mm = c && (el.dataset.beam || "").match(/\s(\d{1,12})$/);
-        return mm && { id: "m" + mm[1], title: norm(cleanText(c)) };
-      }
-      // data-beam je napr. "post 5630008" alebo "dn_blog 5613360"; záloha: číslo v ceste URL
-      const m = (el.dataset.beam || "").match(/\s(\d{1,12})$/) || a.href.match(/dennikn\.sk\/(?:[a-z-]+\/)?(\d{1,12})\//);
-      return m && { id: m[1], title: norm(cleanText(a)) };
-    }
-    // .mnt-Post-hash má id príspevku; text je v .mnt-article (úvodná veta býva v <strong>)
-    const body = el.querySelector(".mnt-article");
-    if (!el.id || !body) return null;
-    const text = cleanText(body);
-    return { id: "m" + el.id, title: norm(text) };
-  }
-
   function scan() {
     discoverRoots();
-    queryItems().forEach((tile) => {
-      if (seen.has(tile)) return;
-      if (!tile.getClientRects().length) return; // nevykreslené (skrytá kópia, zatvorená záložka): zbytočne neplytvať vyhodnotením
-      const item = extract(tile);
-      if (!item || !ID_RE.test(item.id) || !item.title) return; // React ešte nedorenderoval obsah: skúsime znova
+    observedRoots.forEach((root) => ADAPTER.candidates(root).forEach((cand) => {
+      if (seen.has(cand)) return;
+      if (!cand.getClientRects().length) return; // nevykreslené (skrytá kópia, zatvorená záložka): zbytočne neplytvať vyhodnotením
+      const item = ADAPTER.extract(cand);
+      if (item && item.skip) { seen.add(cand); return; }
+      const tile = ADAPTER.target ? ADAPTER.target(cand) : cand;
+      if (item && item.ad) { seen.add(cand); tile.classList.add("dnn-ad"); return; } // platený obsah: skryť bez vyhodnotenia
+      if (!item || !ID_RE.test(item.id) || !item.title) return; // obsah ešte nie je vykreslený: skúsime znova
       const { id, title } = item;
-      const key = ckey(id, title);
+      const key = ckey(SOURCE, id, title);
 
-      if (cache[key]) { seen.add(tile); return apply(tile, cache[key]); }
-      seen.add(tile);
+      seen.add(cand);
+      if (validEntry(cache[key])) return apply(tile, cache[key].c);
+      const pri = Math.abs(cand.getBoundingClientRect().top); // zmerať skôr, než prvok skryje trieda pending
       tile.classList.add("dnn-pending");
       // ten istý článok na stránke viackrát / už rozbehnutý dotaz -> bez ďalšieho volania API
       const existing = inflight.get(id);
-      if (existing) return existing.tiles.push(tile);
+      if (existing) { existing.ckeys.add(key); return existing.tiles.push(tile); }
       run.total++;
-      const entry = { title, ckey: key, tiles: [tile] };
+      const entry = { title, ckeys: new Set([key]), pri, tiles: [tile] };
       inflight.set(id, entry);
       queue.set(id, entry);
-    });
+    }));
     if (queue.size && !timer) timer = setTimeout(flush, 150);
     if (run.total) loaderUpdate();
   }
@@ -372,7 +432,8 @@ ${REVEAL_CSS}
   async function init() {
     addToggle();
     const s = await api.storage.local.get([CACHE_KEY, "allowNeutral"]);
-    cache = Object.fromEntries(Object.entries(s[CACHE_KEY] || {}).filter(([k]) => k.includes(":")));
+    // cache v2: staršie záznamy (bez témy) nepovažujeme za úplné, vyžiadajú sa znova
+    cache = Object.fromEntries(Object.entries(s[CACHE_KEY] || {}).filter(([k, v]) => k.startsWith(CACHE_PREFIX) && validEntry(v)));
     allowNeutral = s.allowNeutral !== false;
     scan();
     new MutationObserver(scan).observe(document.body, { childList: true, subtree: true });
@@ -382,10 +443,7 @@ ${REVEAL_CSS}
     api.storage.onChanged.addListener((ch) => {
       if (!ch.allowNeutral) return;
       allowNeutral = ch.allowNeutral.newValue !== false;
-      queryItems().forEach((tile) => {
-        const cat = tile.dataset.dnn;
-        if (cat) apply(tile, cat);
-      });
+      observedRoots.forEach((root) => root.querySelectorAll("[data-dnn]").forEach((tile) => apply(tile, tile.dataset.dnn)));
     });
   }
   init();

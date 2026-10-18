@@ -37,6 +37,7 @@ trvalá inštalácia vyžaduje podpis cez addons.mozilla.org.
 ## Podporované weby
 
 - dennikn.sk (vrátane poddomén `www.dennikn.sk` a `e.dennikn.sk`)
+- cas.sk (vrátane `www.cas.sk`)
 
 ## Ukážky
 
@@ -54,6 +55,10 @@ Tlačidlo vľavo dole zobrazí pôvodný web a označí hodnotenie každej sprá
 ## Vývoj
 
 Jeden zdrojový kód pre Chrome, Edge aj Firefox (kód používa `browser`, ak existuje, inak `chrome`).
+
+Každý podporovaný web má v `content.js` vlastný adaptér (`DENNIKN`, `CAS`): povie, ktoré prvky sú správy,
+odkiaľ vziať ID a titulok, čo skryť ako reklamu. Nový web = nový adaptér, doména do `manifest.json`
+(`content_scripts.matches` a `host_permissions`) a zmienka v README a na webe.
 
 ```
 node scripts/check.mjs     # kontrola manifestu, súborov, syntaxe a tajomstiev
@@ -89,5 +94,6 @@ Každý push na `main` a každý pull request prejde kontrolou a zostavením (`.
 
 ## Dáta
 
-Na proxy sa posielajú len titulky (alebo úvodné vety krátkych príspevkov), ich ID a anonymné ID inštalácie.
+Na proxy sa posielajú len titulky (alebo úvodné vety krátkych príspevkov), ich ID (číslo, alebo kód odvodený z adresy
+článku, napr. `cas.sk:nazov-clanku`), doména zdroja a anonymné ID inštalácie.
 Hodnotenia a štatistiky sa ukladajú lokálne v `chrome.storage.local`.
