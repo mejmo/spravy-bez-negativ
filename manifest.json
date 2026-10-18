@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Správy bez negatív",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Skryje na spravodajskom webe správy, ktoré sú negatívne alebo psychicky zaťažujúce. Hodnotenie robí AI.",
   "permissions": [
     "storage"
@@ -12,6 +12,12 @@
     "https://e.dennikn.sk/*",
     "https://cas.sk/*",
     "https://www.cas.sk/*",
+    "https://sme.sk/*",
+    "https://www.sme.sk/*",
+    "https://korzar.sme.sk/*",
+    "https://my.sme.sk/*",
+    "https://sportnet.sme.sk/*",
+    "https://blog.sme.sk/*",
     "https://nonegative.replit.app/*"
   ],
   "action": {
@@ -34,7 +40,13 @@
         "https://www.dennikn.sk/*",
         "https://e.dennikn.sk/*",
         "https://cas.sk/*",
-        "https://www.cas.sk/*"
+        "https://www.cas.sk/*",
+        "https://sme.sk/*",
+        "https://www.sme.sk/*",
+        "https://korzar.sme.sk/*",
+        "https://my.sme.sk/*",
+        "https://sportnet.sme.sk/*",
+        "https://blog.sme.sk/*"
       ],
       "js": [
         "content.js"

@@ -38,6 +38,7 @@ trvalá inštalácia vyžaduje podpis cez addons.mozilla.org.
 
 - dennikn.sk (vrátane poddomén `www.dennikn.sk` a `e.dennikn.sk`)
 - cas.sk (vrátane `www.cas.sk`)
+- sme.sk (`www.sme.sk`, `korzar.sme.sk`, `my.sme.sk`, `sportnet.sme.sk`, `blog.sme.sk`)
 
 ## Ukážky
 
@@ -56,7 +57,7 @@ Tlačidlo vľavo dole zobrazí pôvodný web a označí hodnotenie každej sprá
 
 Jeden zdrojový kód pre Chrome, Edge aj Firefox (kód používa `browser`, ak existuje, inak `chrome`).
 
-Každý podporovaný web má v `content.js` vlastný adaptér (`DENNIKN`, `CAS`): povie, ktoré prvky sú správy,
+Každý podporovaný web má v `content.js` vlastný adaptér (`DENNIKN`, `CAS`, `SME`): povie, ktoré prvky sú správy,
 odkiaľ vziať ID a titulok, čo skryť ako reklamu. Nový web = nový adaptér, doména do `manifest.json`
 (`content_scripts.matches` a `host_permissions`) a zmienka v README a na webe.
 

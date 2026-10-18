@@ -110,8 +110,44 @@ iframe[id^="goog_"], iframe[id^="google_ads"], ins.adsbygoogle { display: none !
     }
   };
 
+  // sme.sk: dlaždice sú div/li s triedou `article-tile` alebo `listing__item`. Väčšina nesie data-url a
+  // data-headline; minútové príspevky majú data-js-minute-post-id a text v .listing__item-body. URL článku je
+  // /<rubrika>/c/<slug> (aj blog.sme.sk/<autor>/<rubrika>/<slug> a sportnet.sme.sk/spravy/<slug>).
+  const SME = {
+    source: "sme.sk",
+    adCss: `.sme-banner, .pb_item--advert, .advert-placeholder, [id^="minute-advert"], .remp-banner,
+ins.adsbygoogle, iframe[id^="google_ads"] { display: none !important; }`,
+    candidates: (root) => root.querySelectorAll(".article-tile, .listing__item"),
+    extract(el) {
+      // minútový príspevok: vlastné ID, text príspevku (nie titulok článku, na ktorý odkazuje)
+      if (el.dataset.jsMinutePostId) {
+        const body = el.querySelector(".listing__item-body");
+        const title = body ? norm(cleanText(body)) : "";
+        return title ? { id: "sme.sk:minute-" + el.dataset.jsMinutePostId, title } : null;
+      }
+      const link = el.querySelector("a.listing-item-text__title[href], h1 a[href], h2 a[href], h3 a[href], h4 a[href], a.article-tile-thumbnail[href]");
+      let u;
+      try { u = new URL(el.dataset.url || (link && link.href) || "", location.href); } catch { return { skip: true }; }
+      if (!/(^|\.)sme\.sk$/.test(u.hostname)) return { skip: true }; // partnerský/externý obsah
+      const parts = u.pathname.split("/").filter(Boolean);
+      const isArticle = parts.includes("c") || (u.hostname === "sportnet.sme.sk" && parts[0] === "spravy" && parts.length >= 2) ||
+        (u.hostname === "blog.sme.sk" && parts.length >= 3);
+      if (!isArticle) return { skip: true }; // navigácia, rubriky a pod.
+      const ci = parts.indexOf("c");
+      // starý tvar /c/<číselné id>/<slug>.html -> číselné ID; inak posledný segment cesty
+      let slug = ci >= 0 && /^\d+$/.test(parts[ci + 1] || "") ? parts[ci + 1] : parts[parts.length - 1].replace(/\.html?$/i, "");
+      if (!slug) return { skip: true };
+      try { slug = decodeURIComponent(slug); } catch { /* ostane pôvodný */ }
+      slug = slug.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Za-z0-9._:-]/g, "-");
+      if (slug.length > 110) slug = slug.slice(0, 100) + "-" + fnv(slug); // ID má najviac 128 znakov
+      const h = el.querySelector("h1, h2, h3, h4");
+      const title = norm(el.dataset.headline || (h ? cleanText(h) : "") || (link ? cleanText(link) : ""));
+      return title ? { id: "sme.sk:" + slug, title } : null;
+    }
+  };
+
   const hostname = location.hostname.replace(/^www\./, "");
-  const ADAPTER = { "cas.sk": CAS }[hostname] || DENNIKN;
+  const ADAPTER = /(^|\.)sme\.sk$/.test(hostname) ? SME : { "cas.sk": CAS }[hostname] || DENNIKN;
   const SOURCE = ADAPTER.source;
 
   // Štýly: do dokumentu aj do každého shadow rootu (page CSS ani náš súbor tam nesiaha).
