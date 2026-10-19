@@ -10,6 +10,8 @@
 
 ## Stiahnutie
 
+**Chrome:** [Správy bez negatív v Chrome Web Store](https://chromewebstore.google.com/detail/spr%C3%A1vy-bez-negat%C3%ADv/dlglepbinkpggddkikoaefemhnmkopho)
+
 Balíky z [najnovšieho vydania](https://github.com/mejmo/spravy-bez-negativ/releases/latest)
 (všetky verzie: [releases](https://github.com/mejmo/spravy-bez-negativ/releases)):
 
@@ -19,7 +21,7 @@ Balíky z [najnovšieho vydania](https://github.com/mejmo/spravy-bez-negativ/rel
 | Edge | [spravy-bez-negativ-edge.zip](https://github.com/mejmo/spravy-bez-negativ/releases/latest/download/spravy-bez-negativ-edge.zip) |
 | Firefox | [spravy-bez-negativ-firefox.zip](https://github.com/mejmo/spravy-bez-negativ/releases/latest/download/spravy-bez-negativ-firefox.zip) |
 
-Inštalácia (Chrome, Edge): rozbaliť ZIP, otvoriť `chrome://extensions` (v Edge `edge://extensions`),
+Ručná inštalácia (Chrome, Edge): rozbaliť ZIP, otvoriť `chrome://extensions` (v Edge `edge://extensions`),
 zapnúť **Developer mode** a cez **Load unpacked** vybrať rozbalený priečinok.
 
 Inštalácia (Firefox): otvoriť `about:debugging#/runtime/this-firefox`, **Load Temporary Add-on…** a vybrať
